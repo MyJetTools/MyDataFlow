@@ -50,11 +50,11 @@ namespace MyDataFlowPattern
                 var theItem = enqueueBackItem as QueueItem ??  new QueueItem
                 {
                     Data = enqueueBackItem.Data,
-                    VisibleAt = visibleAt,
                     AttemptNo = enqueueBackItem.AttemptNo
                 };
 
                 theItem.AttemptNo++;
+                theItem.VisibleAt = visibleAt;
                 
                 _items.Add(theItem.Id, theItem);
             }
@@ -67,7 +67,7 @@ namespace MyDataFlowPattern
 
             lock (_items)
             {
-                var nextItem = _items.Values.FirstOrDefault(itm => itm.VisibleAt >= nowDate);
+                var nextItem = _items.Values.FirstOrDefault(itm => nowDate >= itm.VisibleAt);
 
                 if (nextItem != null)
                 {

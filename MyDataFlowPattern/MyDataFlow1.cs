@@ -6,6 +6,8 @@ namespace MyDataFlowPattern
     public interface IDataFlowSettings
     {
         TimeSpan RequeueTimeOut { get; }
+        
+        int MaximumAttempts { get; }
     }
     public class MyDataFlow<TStepModel> : MyDataFlowBase
     {

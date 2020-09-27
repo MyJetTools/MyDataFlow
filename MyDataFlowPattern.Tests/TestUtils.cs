@@ -7,6 +7,7 @@ namespace MyDataFlowPattern.Tests
     internal class DataFlowTestSettings : IDataFlowSettings
     {
         public TimeSpan RequeueTimeOut { get; set; }
+        public int MaximumAttempts { get; } = 5;
     }
     
     public static class TestUtils

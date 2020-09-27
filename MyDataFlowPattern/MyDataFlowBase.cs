@@ -33,7 +33,22 @@ namespace MyDataFlowPattern
             _serializer = serializer;
             _deserializer = deserializer;
         }
+        
 
+        private Action<object, int, object> _logCallback;
+
+        public void RegisterLog(Action<object, int, object> logCallback)
+        {
+            _logCallback = logCallback;
+        }
+
+
+        private Action<object> _callbackFailMaxAttempts;
+        public void RegisterStepFail(Action<object> callbackFailMaxAttempts)
+        {
+            _callbackFailMaxAttempts = callbackFailMaxAttempts;
+        }
+        
         private async ValueTask HandleStepModelAsync(object stepModel, int attemptNo, DateTime now)
         {
 
@@ -42,8 +57,12 @@ namespace MyDataFlowPattern
                 if (stepModel.GetType() == stepType)
                 {
                     var modelResult = stepCallBack(stepModel, attemptNo);
-                    await Enqueue(modelResult, now);
-                    await ReadQueueIterationAsync(now);
+
+                    if (modelResult != null)
+                    {
+                        await Enqueue(modelResult, now);
+                        await ReadQueueIterationAsync(now);
+                    }
                     break;
                 }
             }
@@ -52,6 +71,21 @@ namespace MyDataFlowPattern
                 _lastStep(stepModel, attemptNo);
         }
 
+
+
+        private object Deserialize(IQueueItem item)
+        {
+            try
+            {
+                return _deserializer(item.Data);
+            }
+            catch (Exception e)
+            {
+                _logCallback?.Invoke(item, -1, e);
+                throw;
+            }
+        }
+        
         public async ValueTask ReadQueueIterationAsync(DateTime now)
         {
             var nextItem = await _dataFlowQueue.DequeueAsync(now);
@@ -59,15 +93,20 @@ namespace MyDataFlowPattern
             if (nextItem == null)
                 return;
 
+            var model = Deserialize(nextItem);
+            
             try
             {
-                var model = _deserializer(nextItem.Data);
                 await HandleStepModelAsync(model, nextItem.AttemptNo, now);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                await _dataFlowQueue.EnqueueBackAsync(nextItem, now.Add(_dataFlowSettings.RequeueTimeOut));
+                _logCallback?.Invoke(model, nextItem.AttemptNo, e);
+                
+                if (nextItem.AttemptNo < _dataFlowSettings.MaximumAttempts)
+                    await _dataFlowQueue.EnqueueBackAsync(nextItem, now.Add(_dataFlowSettings.RequeueTimeOut));
+                else
+                    _callbackFailMaxAttempts?.Invoke(model);
             }
 
         }
@@ -80,9 +119,9 @@ namespace MyDataFlowPattern
 
         private void RegisterType(Type type, Func<object, int, object> callback)
         {
-            _firstSteps.Add(type, callback);
+            if (!_firstSteps.TryAdd(type, callback))
+                throw new Exception($"Duplicated step model {type} for the flow {GetType()}");
         }
-
 
         protected void RegisterStep<TStepBefore, TStepAfter>(Func<TStepBefore, int, TStepAfter> callback)
         {
@@ -94,7 +133,7 @@ namespace MyDataFlowPattern
             _lastStepType = typeof(TStepModel);
             _lastStep = (model, no)=>callback((TStepModel)model,  no);
         }
-
+        
         
     }
 }

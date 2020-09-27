@@ -1,8 +1,6 @@
 name: build-and-test
 
-on:
-  push:
-    tags: "Client-*"
+on: [push]
 
 jobs:
   build:

@@ -1,57 +1,100 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace MyDataFlowPattern
 {
     public abstract class MyDataFlowBase
     {
-        internal readonly IDataFlowQueue DataFlowQueue;
-        internal readonly IDataFlowSettings DataFlowSettings;
+        private readonly IDataFlowQueue _dataFlowQueue;
+        private readonly IDataFlowSettings _dataFlowSettings;
 
-        internal Func<object, byte[]> Serializer { get; private set; }
-        internal Func<byte[], object> Deserializer{ get; private set; }
+        private Func<object, byte[]> _serializer;
+        private Func<byte[], object> _deserializer;
+
 
         internal ValueTask Enqueue(object o, DateTime executeAt)
         {
-            if (Serializer == null)
+            if (_serializer == null)
                 throw new Exception("Please specify serializer");
             
-            var stepModel = Serializer(o);
-            return DataFlowQueue.EnqueueAsync(stepModel, executeAt); 
+            var stepModel = _serializer(o);
+            return _dataFlowQueue.EnqueueAsync(stepModel, executeAt); 
         }
 
         protected MyDataFlowBase(IDataFlowQueue dataFlowQueue, IDataFlowSettings dataFlowSettings)
         {
-            DataFlowQueue = dataFlowQueue;
-            DataFlowSettings = dataFlowSettings;
+            _dataFlowQueue = dataFlowQueue;
+            _dataFlowSettings = dataFlowSettings;
         }
         
         public void RegisterSerializerDeserializer(Func<object, byte[]> serializer, Func<byte[], object> deserializer)
         {
-            Serializer = serializer;
-            Deserializer = deserializer;
+            _serializer = serializer;
+            _deserializer = deserializer;
         }
 
-        protected abstract ValueTask HandleStepModelAsync(object stepModel, int attemptNo, DateTime now);
-        
+        private async ValueTask HandleStepModelAsync(object stepModel, int attemptNo, DateTime now)
+        {
+
+            foreach (var (stepType, stepCallBack) in _firstSteps)
+            {
+                if (stepModel.GetType() == stepType)
+                {
+                    var modelResult = stepCallBack(stepModel, attemptNo);
+                    await Enqueue(modelResult, now);
+                    await ReadQueueIterationAsync(now);
+                    break;
+                }
+            }
+            
+            if (stepModel.GetType() == _lastStepType)
+                _lastStep(stepModel, attemptNo);
+        }
+
         public async ValueTask ReadQueueIterationAsync(DateTime now)
         {
-            var nextItem = await DataFlowQueue.DequeueAsync(now);
+            var nextItem = await _dataFlowQueue.DequeueAsync(now);
             
             if (nextItem == null)
                 return;
 
             try
             {
-                var model = Deserializer(nextItem.Data);
+                var model = _deserializer(nextItem.Data);
                 await HandleStepModelAsync(model, nextItem.AttemptNo, now);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                await DataFlowQueue.EnqueueBackAsync(nextItem, now.Add(DataFlowSettings.RequeueTimeOut));
+                await _dataFlowQueue.EnqueueBackAsync(nextItem, now.Add(_dataFlowSettings.RequeueTimeOut));
             }
 
         }
+
+        private readonly Dictionary<Type, Func<object, int, object>> _firstSteps 
+            = new Dictionary<Type, Func<object, int, object>>();
+        
+        private Action<object, int> _lastStep;
+        private Type _lastStepType;
+
+        private void RegisterType(Type type, Func<object, int, object> callback)
+        {
+            _firstSteps.Add(type, callback);
+        }
+
+
+        protected void RegisterStep<TStepBefore, TStepAfter>(Func<TStepBefore, int, TStepAfter> callback)
+        {
+            RegisterType(typeof(TStepBefore), (model, no)=>callback((TStepBefore)model,  no));
+        }
+        
+        protected void RegisterStep<TStepModel>(Action<TStepModel, int> callback)
+        {
+            _lastStepType = typeof(TStepModel);
+            _lastStep = (model, no)=>callback((TStepModel)model,  no);
+        }
+
+        
     }
 }

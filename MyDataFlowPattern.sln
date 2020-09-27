@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyDataFlowPattern", "MyDataFlowPattern\MyDataFlowPattern.csproj", "{FB09FBD6-37AA-4BA1-A1C5-C263F4B3276D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyDataFlowPattern.Tests", "MyDataFlowPattern.Tests\MyDataFlowPattern.Tests.csproj", "{AA1177B3-4459-437E-8997-970E5C0842C6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FB09FBD6-37AA-4BA1-A1C5-C263F4B3276D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB09FBD6-37AA-4BA1-A1C5-C263F4B3276D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB09FBD6-37AA-4BA1-A1C5-C263F4B3276D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB09FBD6-37AA-4BA1-A1C5-C263F4B3276D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA1177B3-4459-437E-8997-970E5C0842C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA1177B3-4459-437E-8997-970E5C0842C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA1177B3-4459-437E-8997-970E5C0842C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA1177B3-4459-437E-8997-970E5C0842C6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
